@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Navigation drawer menu exactly as requested -->
+    <item
+        android:id="@+id/nav_dashboard"
+        android:title="@string/dashboard_title" />
+    <item
+        android:id="@+id/nav_submit"
+        android:title="@string/btn_submit_documents" />
+    <item
+        android:id="@+id/nav_payment"
+        android:title="@string/btn_pay" />
+    <item
+        android:id="@+id/nav_profile"
+        android:title="@string/btn_profile" />
+    <item
+        android:id="@+id/nav_settings"
+        android:title="@string/nav_settings" />
+    <item
+        android:id="@+id/nav_logout"
+        android:title="@string/nav_logout" />
+</menu>
+

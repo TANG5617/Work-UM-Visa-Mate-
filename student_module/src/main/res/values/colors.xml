@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Exact color palette from design -->
+    <color name="primary_dark_blue">#163269</color>
+    <color name="secondary_steel_blue">#4A7FBA</color>
+    <color name="accent_gold">#DEB406</color>
+    <color name="text_primary">#163269</color>
+
+    <!-- Material-compatible aliases -->
+    <color name="colorPrimary">#163269</color>
+    <color name="colorPrimaryVariant">#0F2546</color>
+    <color name="colorSecondary">#4A7FBA</color>
+    <color name="colorAccent">#DEB406</color>
+    <color name="colorBackground">#ECEFF1</color>
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorError">#B00020</color>
+    <color name="onPrimary">#FFFFFF</color>
+    <color name="onSecondary">#FFFFFF</color>
+    <color name="onBackground">#163269</color>
+    <color name="onSurface">#163269</color>
+    <color name="white">#FFFFFF</color>
+
+    <!-- Additional colors from design -->
+    <color name="light_blue_info">#E3F2FD</color>
+    <color name="light_yellow_warning">#FFF8E1</color>
+    <color name="light_green_success">#E8F5E9</color>
+    <color name="light_red_urgent">#FFEBEE</color>
+    <color name="green_success">#4CAF50</color>
+    <color name="orange_warning">#FF9800</color>
+    <color name="red_urgent">#F44336</color>
+    <color name="grey_text">#757575</color>
+    <color name="grey_border">#E0E0E0</color>
+
+    <!-- Colors referenced by default template/night values -->
+    <color name="purple_200">#BB86FC</color>
+    <color name="purple_700">#3700B3</color>
+    <color name="teal_200">#03DAC5</color>
+    <color name="black">#000000</color>
+</resources>
