@@ -221,7 +221,7 @@
                         android:layout_marginBottom="12dp">
 
                         <ImageView
-                            android:id="@+id/iv_check_emblem"
+                            android:id="@+id/ic_check"
                             android:layout_width="32dp"
                             android:layout_height="32dp"
                             android:layout_marginEnd="12dp"
@@ -262,7 +262,7 @@
                         android:layout_marginBottom="12dp">
 
                         <ImageView
-                            android:id="@+id/iv_warning_emblem"
+                            android:id="@+id/ic_warning"
                             android:layout_width="32dp"
                             android:layout_height="32dp"
                             android:layout_marginEnd="12dp"
@@ -386,6 +386,7 @@
                         android:layout_marginBottom="16dp">
 
                         <TextView
+                            android:id="@+id/tvStep3Circle"
                             android:layout_width="32dp"
                             android:layout_height="32dp"
                             android:text="3"
@@ -409,6 +410,7 @@
                                 android:textColor="@color/grey_text" />
 
                             <TextView
+                                android:id="@+id/tvStep3Status"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/approved_desc"
@@ -464,7 +466,7 @@
                         android:padding="12dp">
 
                         <ImageView
-                            android:id="@+id/iv_upload_icon_large"
+                            android:id="@+id/ic_document_upload"
                             android:layout_width="40dp"
                             android:layout_height="40dp"
                             android:src="@drawable/ic_document_upload"
@@ -484,12 +486,16 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardPayFeesContainer"
                     android:layout_width="0dp"
                     android:layout_height="100dp"
                     android:layout_columnWeight="1"
                     android:layout_margin="4dp"
                     app:cardCornerRadius="8dp"
-                    app:cardElevation="2dp">
+                    app:cardElevation="2dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -499,7 +505,7 @@
                         android:padding="12dp">
 
                         <ImageView
-                            android:id="@+id/iv_attach_money"
+                            android:id="@+id/ic_payment"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:contentDescription="Money Icon"

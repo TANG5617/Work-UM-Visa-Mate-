@@ -41,6 +41,7 @@ class DashboardActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dashboard)
 
+        // 1. 初始化所有 View
         btnContinueRenewal = findViewById(R.id.btnContinueRenewal)
         tvWelcome = findViewById(R.id.tvWelcome)
         tvStudentId = findViewById(R.id.tvStudentId)
@@ -56,7 +57,7 @@ class DashboardActivity : AppCompatActivity() {
         setupClickListeners()
         refreshDashboardStatus()
 
-        // Handle the Back Button: Hide fragment container when back stack is empty
+        // 监听 Fragment 关闭，自动刷新 Dashboard
         supportFragmentManager.addOnBackStackChangedListener {
             if (supportFragmentManager.backStackEntryCount == 0) {
                 fragmentContainer.visibility = View.GONE
@@ -73,24 +74,30 @@ class DashboardActivity : AppCompatActivity() {
     private fun setupClickListeners() {
         btnContinueRenewal.setOnClickListener {
             lifecycleScope.launch(Dispatchers.IO) {
-                val status = FakeDatabase.getSubmissionForUser(user?.id ?: "")?.status
+                val submission = FakeDatabase.getSubmissionForUser(user?.id ?: "")
                 withContext(Dispatchers.Main) {
-                    when (status) {
-                        SubmissionStatus.APPROVED -> {
+                    when (submission?.status) {
+                        SubmissionStatus.OFFICER_APPROVED -> { /* 下载 E-Visa 逻辑 */ }
+                        SubmissionStatus.APPROVED -> { /* 学院通过了，跳转去付钱 */
                             val intent = Intent(this@DashboardActivity, PaymentActivity::class.java)
                             paymentLauncher.launch(intent)
                         }
+                        SubmissionStatus.SUBMITTED -> { /* 已提交，不可点 */ }
                         else -> showFragment(DocumentSubmissionFragment())
                     }
                 }
             }
         }
 
-        findViewById<View>(R.id.cardUploadDoc).setOnClickListener { showFragment(DocumentSubmissionFragment()) }
-        findViewById<View>(R.id.cardPayFees).setOnClickListener {
+        findViewById<View>(R.id.cardUploadDoc).setOnClickListener {
+            showFragment(DocumentSubmissionFragment())
+        }
+
+        findViewById<View>(R.id.cardPayFeesContainer).setOnClickListener {
             val intent = Intent(this, PaymentActivity::class.java)
             paymentLauncher.launch(intent)
         }
+
         btnLogout.setOnClickListener {
             FakeDatabase.currentUser = null
             startActivity(Intent(this, LoginActivity::class.java).apply {
@@ -100,108 +107,115 @@ class DashboardActivity : AppCompatActivity() {
         }
     }
 
+    // 核心 UI 刷新逻辑
     fun refreshDashboardStatus() {
         lifecycleScope.launch(Dispatchers.IO) {
             val submission = FakeDatabase.getSubmissionForUser(user?.id ?: "")
             withContext(Dispatchers.Main) {
-                // Determine if faculty part is done
-                val isFacultyDone = submission != null && submission.hasConfirmationLetter && submission.hasResultTranscript
+
+                // 基础检查：Faculty 是否通过（通过了就应该显式变绿）
+                val isFacultyDone = submission != null && (submission.hasConfirmationLetter || submission.status != SubmissionStatus.PENDING)
 
                 when (submission?.status) {
-                    SubmissionStatus.SUBMITTED -> updateUiToUploadStage()
-                    SubmissionStatus.APPROVED -> updateUiToPaymentStage()
-                    else -> resetUiToInitialStage(isFacultyDone) // Pass the flag
-                }
-                
-                // Explicitly update faculty UI again if needed, or rely on resetUiToInitialStage handling it.
-                // But to be safe, if isFacultyDone is true, ensure it's green.
-                if (isFacultyDone) {
-                    updateFacultyStatusToComplete()
+                    // 状态 5：Officer 最终批准 (全绿勾)
+                    SubmissionStatus.OFFICER_APPROVED -> updateUiToFinalSuccess()
+
+                    // 状态 4：学生已付钱并上传，等 Officer 审批 (1绿, 2黄, 按钮禁用)
+                    SubmissionStatus.SUBMITTED -> updateUiToWaitingOfficerApprove()
+
+                    // 状态 3：学院通过了 (APPROVED)，学生需要付钱 (1号圈高亮)
+                    SubmissionStatus.APPROVED -> updateUiToPaymentStage(isFacultyDone)
+
+                    // 状态 2：审核中 (学院审核)
+                    SubmissionStatus.REVIEWING -> updateUiToFacultyReviewing()
+
+                    else -> resetUiToInitialStage(isFacultyDone)
                 }
             }
         }
     }
 
+    // --- 各阶段状态 UI 更新方法 ---
+
     private fun updateFacultyStatusToComplete() {
-        findViewById<ImageView>(R.id.iv_warning_emblem)?.let {
-            it.setImageResource(R.drawable.ic_check)
-            it.backgroundTintList = ContextCompat.getColorStateList(this, R.color.green_success)
+        findViewById<ImageView>(R.id.ic_warning)?.apply {
+            setImageResource(R.drawable.ic_check)
+            backgroundTintList = ContextCompat.getColorStateList(context, R.color.green_success)
+            imageTintList = ContextCompat.getColorStateList(context, R.color.white)
         }
         findViewById<TextView>(R.id.tvStatusTitle)?.text = "Faculty Documents Ready"
-        findViewById<TextView>(R.id.tvStatusDesc)?.text = "All documents uploaded"
     }
 
-    private fun updateUiToPaymentStage() {
-        // Faculty Status: Change to Approved (Green)
-        updateFacultyStatusToComplete()
+    private fun updateUiToPaymentStage(isFacultyDone: Boolean) {
+        if (isFacultyDone) updateFacultyStatusToComplete()
+        setStepCircleActive(R.id.tvPaymentStepCircle, "1")
+        findViewById<TextView>(R.id.tvPaymentStepStatus)?.text = "Waiting for Payment"
 
-        // Payment Step: Becomes active (Step 1)
-        findViewById<TextView>(R.id.tvPaymentStepCircle)?.let {
-            it.text = "1"
-            it.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_gold)
-            it.setTextColor(ContextCompat.getColor(this, R.color.onPrimary))
-        }
-        btnContinueRenewal.visibility = View.VISIBLE
+        btnContinueRenewal.isEnabled = true
         btnContinueRenewal.text = "PROCEED TO PAYMENT"
     }
 
-    /**
-     * Stage: SUBMITTED (Payment is done, time to upload)
-     */
-    private fun updateUiToUploadStage() {
-        // 1. Update Payment Step Visuals
-        findViewById<TextView>(R.id.tvPaymentStepCircle)?.let {
-            it.text = "✓"
-            it.backgroundTintList = ContextCompat.getColorStateList(this, R.color.green_success)
-            it.setTextColor(ContextCompat.getColor(this, R.color.white))
-        }
+    private fun updateUiToWaitingOfficerApprove() {
+        updateFacultyStatusToComplete()
+        setStepCircleCompleted(R.id.tvPaymentStepCircle)
 
-        // 2. NEW: Update Payment Step Text
-        // Using existing ID to change description
-        findViewById<TextView>(R.id.tvPaymentStepStatus)?.apply {
-            text = "Payment Completed" // Change from "Not Started"
-            setTextColor(ContextCompat.getColor(context, R.color.green_success))
+        // 步骤 2 变成黄色/活动状态
+        findViewById<TextView>(R.id.tvVisaUnitStepCircle)?.apply {
+            text = "2"
+            backgroundTintList = ContextCompat.getColorStateList(context, R.color.accent_gold)
+            setTextColor(ContextCompat.getColor(context, R.color.white))
         }
+        findViewById<TextView>(R.id.tvVisaUnitStepText)?.text = "Documents with Visa Unit"
 
-        // 3. Update Visa Unit Step Visuals (Step 2)
-        findViewById<TextView>(R.id.tvVisaUnitStepCircle)?.let {
-            it.text = "2" // Show as the next active step
-            it.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_gold)
-            it.setTextColor(ContextCompat.getColor(this, R.color.onPrimary))
-        }
+        btnContinueRenewal.isEnabled = false
+        btnContinueRenewal.text = "PENDING OFFICER APPROVAL"
+        btnContinueRenewal.setBackgroundColor(ContextCompat.getColor(this, R.color.grey_text))
+    }
 
-        // 4. NEW: Update Visa Unit Step Text
-        // Change title from "Visa Unit" or "Not Started" to "Ready for Submission"
-        findViewById<TextView>(R.id.tvVisaUnitStepText)?.apply {
-            text = "Final Upload Ready"
-            setTextColor(ContextCompat.getColor(context, R.color.black))
-            alpha = 1.0f
-        }
+    private fun updateUiToFinalSuccess() {
+        // 必须强制刷新所有步骤为绿色勾选，防止状态清空感
+        updateFacultyStatusToComplete()
+        setStepCircleCompleted(R.id.tvPaymentStepCircle)
+        setStepCircleCompleted(R.id.tvVisaUnitStepCircle)
+        setStepCircleCompleted(R.id.tvStep3Circle)
 
-        // 5. Update Main Action Button
-        btnContinueRenewal.visibility = View.VISIBLE
-        btnContinueRenewal.text = "UPLOAD FINAL DOCUMENTS"
+        findViewById<TextView>(R.id.tvStatusTitle)?.text = "Renewal Process Complete"
+        findViewById<TextView>(R.id.tvVisaUnitStepText)?.text = "Documents Approved"
+        findViewById<TextView>(R.id.tvStep3Status)?.text = "Visa Issued Successfully"
+
+        btnContinueRenewal.isEnabled = true
+        btnContinueRenewal.text = "DOWNLOAD E-VISA"
+        btnContinueRenewal.setBackgroundColor(ContextCompat.getColor(this, R.color.green_success))
+    }
+
+    private fun updateUiToFacultyReviewing() {
+        findViewById<TextView>(R.id.tvStatusTitle)?.text = "Faculty Reviewing Documents..."
+        btnContinueRenewal.isEnabled = false
+        btnContinueRenewal.text = "UNDER FACULTY REVIEW"
     }
 
     private fun resetUiToInitialStage(isFacultyDone: Boolean) {
-        if (isFacultyDone) {
-             updateFacultyStatusToComplete()
-        } else {
-            findViewById<ImageView>(R.id.iv_warning_emblem)?.let {
-                it.setImageResource(R.drawable.ic_warning)
-                it.backgroundTintList = ContextCompat.getColorStateList(this, R.color.orange_warning)
-            }
-            findViewById<TextView>(R.id.tvStatusTitle)?.text = "Waiting for Faculty"
-            findViewById<TextView>(R.id.tvStatusDesc)?.text = "Documents requested on 11 Dec 2024"
-        }
-        
-        findViewById<TextView>(R.id.tvPaymentStepCircle)?.let {
-            it.text = "1"
-            it.backgroundTintList = ContextCompat.getColorStateList(this, R.color.grey_border)
-            it.setTextColor(ContextCompat.getColor(this, R.color.grey_text))
-        }
-        btnContinueRenewal.visibility = View.VISIBLE
+        if (isFacultyDone) updateFacultyStatusToComplete()
+        btnContinueRenewal.isEnabled = true
         btnContinueRenewal.text = "CONTINUE RENEWAL"
+    }
+
+    // --- 工具方法 ---
+
+    private fun setStepCircleCompleted(textViewId: Int) {
+        findViewById<TextView>(textViewId)?.apply {
+            text = "✓"
+            setTextColor(ContextCompat.getColor(context, R.color.white))
+            backgroundTintList = ContextCompat.getColorStateList(context, R.color.green_success)
+        }
+    }
+
+    private fun setStepCircleActive(textViewId: Int, stepNumber: String) {
+        findViewById<TextView>(textViewId)?.apply {
+            text = stepNumber
+            setTextColor(ContextCompat.getColor(context, R.color.white))
+            backgroundTintList = ContextCompat.getColorStateList(context, R.color.accent_gold)
+        }
     }
 
     fun showFragment(fragment: Fragment) {
