@@ -356,8 +356,8 @@
                             android:layout_marginTop="8dp"
                             android:layout_marginRight="8dp"
                             android:layout_weight="1"
-                            android:background="#F9A825"
-                            android:text="pending"
+                            android:background="@color/green_success"
+                            android:text="verified"
                             android:textAlignment="center"
                             android:textColor="@color/colorSurface"
                             android:textSize="16sp" />
