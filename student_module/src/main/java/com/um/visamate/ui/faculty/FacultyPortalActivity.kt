@@ -61,7 +61,8 @@ class FacultyPortalActivity : AppCompatActivity() {
         btnUploadDocs1.setOnClickListener {
             val intent = Intent(this, FacultyUploadActivity::class.java).apply {
                 // Pass the student details to the next screen
-                putExtra("studentId", "user-ahmed-khan")
+                // MUST MATCH THE ID IN FakeDatabase seedSampleUsers for correct data mapping
+                putExtra("studentId", "user-ahmed") 
                 putExtra("studentName", "Ahmed Ali")
             }
             // Launch the activity and wait for result

@@ -28,9 +28,13 @@ object FakeDatabase {
 
         submissions.add(Submission(
             id = "sub_ahmed_001",
-            userId = "user-ahmed",
+            userId = "user-ahmed", // Match this ID
             status = SubmissionStatus.PENDING
         ))
+    }
+
+    fun userExists(email: String): Boolean {
+        return users.any { it.email.equals(email, ignoreCase = true) }
     }
 
     fun login(email: String): Boolean {

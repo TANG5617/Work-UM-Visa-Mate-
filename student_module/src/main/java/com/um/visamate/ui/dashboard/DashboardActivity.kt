@@ -104,21 +104,36 @@ class DashboardActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             val submission = FakeDatabase.getSubmissionForUser(user?.id ?: "")
             withContext(Dispatchers.Main) {
+                // Determine if faculty part is done
+                val isFacultyDone = submission != null && submission.hasConfirmationLetter && submission.hasResultTranscript
+
                 when (submission?.status) {
                     SubmissionStatus.SUBMITTED -> updateUiToUploadStage()
                     SubmissionStatus.APPROVED -> updateUiToPaymentStage()
-                    else -> resetUiToInitialStage()
+                    else -> resetUiToInitialStage(isFacultyDone) // Pass the flag
+                }
+                
+                // Explicitly update faculty UI again if needed, or rely on resetUiToInitialStage handling it.
+                // But to be safe, if isFacultyDone is true, ensure it's green.
+                if (isFacultyDone) {
+                    updateFacultyStatusToComplete()
                 }
             }
         }
     }
 
-    private fun updateUiToPaymentStage() {
-        // Faculty Status: Change to Approved (Green)
+    private fun updateFacultyStatusToComplete() {
         findViewById<ImageView>(R.id.iv_warning_emblem)?.let {
             it.setImageResource(R.drawable.ic_check)
             it.backgroundTintList = ContextCompat.getColorStateList(this, R.color.green_success)
         }
+        findViewById<TextView>(R.id.tvStatusTitle)?.text = "Faculty Documents Ready"
+        findViewById<TextView>(R.id.tvStatusDesc)?.text = "All documents uploaded"
+    }
+
+    private fun updateUiToPaymentStage() {
+        // Faculty Status: Change to Approved (Green)
+        updateFacultyStatusToComplete()
 
         // Payment Step: Becomes active (Step 1)
         findViewById<TextView>(R.id.tvPaymentStepCircle)?.let {
@@ -168,11 +183,18 @@ class DashboardActivity : AppCompatActivity() {
         btnContinueRenewal.text = "UPLOAD FINAL DOCUMENTS"
     }
 
-    private fun resetUiToInitialStage() {
-        findViewById<ImageView>(R.id.iv_warning_emblem)?.let {
-            it.setImageResource(R.drawable.ic_warning)
-            it.backgroundTintList = ContextCompat.getColorStateList(this, R.color.orange_warning)
+    private fun resetUiToInitialStage(isFacultyDone: Boolean) {
+        if (isFacultyDone) {
+             updateFacultyStatusToComplete()
+        } else {
+            findViewById<ImageView>(R.id.iv_warning_emblem)?.let {
+                it.setImageResource(R.drawable.ic_warning)
+                it.backgroundTintList = ContextCompat.getColorStateList(this, R.color.orange_warning)
+            }
+            findViewById<TextView>(R.id.tvStatusTitle)?.text = "Waiting for Faculty"
+            findViewById<TextView>(R.id.tvStatusDesc)?.text = "Documents requested on 11 Dec 2024"
         }
+        
         findViewById<TextView>(R.id.tvPaymentStepCircle)?.let {
             it.text = "1"
             it.backgroundTintList = ContextCompat.getColorStateList(this, R.color.grey_border)

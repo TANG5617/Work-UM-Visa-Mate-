@@ -5,6 +5,14 @@
     <string name="app_full_title">UM VISA Mate</string>
     <string name="login_subtitle">Student Pass Renewal System</string>
 
+    <!-- Registration screen -->
+    <string name="register_title">Create Account</string>
+    <string name="register_subtitle">Join UM Visa Mate</string>
+    <string name="label_name">Full Name</string>
+    <string name="enter_name">Enter your full name</string>
+    <string name="btn_register">Register</string>
+    <string name="already_have_account">Already have an account? Login</string>
+
     <!-- Login screen -->
     <string name="login_as">Login as:</string>
     <string name="student">Student</string>

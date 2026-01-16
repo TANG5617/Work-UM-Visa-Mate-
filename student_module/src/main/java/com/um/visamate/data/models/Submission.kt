@@ -8,5 +8,8 @@ data class Submission(
     var status: SubmissionStatus = SubmissionStatus.PENDING,
     var submittedAt: Long = 0,
     val hasConfirmationLetter: Boolean = false,
-    val hasResultTranscript: Boolean = false
+    val hasResultTranscript: Boolean = false,
+    val passportPhotoUrl: String? = null,
+    val passportScanUrl: String? = null,
+    val financialProofUrl: String? = null
 )

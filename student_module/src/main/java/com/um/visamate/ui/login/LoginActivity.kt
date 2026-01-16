@@ -28,6 +28,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var cardRoleFaculty: MaterialCardView
     private lateinit var cardRoleVisa: MaterialCardView
     private lateinit var btnLogin: MaterialButton
+    private lateinit var tvRegisterLink: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,11 +42,16 @@ class LoginActivity : AppCompatActivity() {
         cardRoleFaculty = findViewById(R.id.cardRoleFaculty)
         cardRoleVisa = findViewById(R.id.cardRoleVisa)
         btnLogin = findViewById(R.id.btnLogin)
+        tvRegisterLink = findViewById(R.id.tvRegisterLink)
 
         setupRoleCards()
 
         btnLogin.setOnClickListener {
             handleLogin()
+        }
+
+        tvRegisterLink.setOnClickListener {
+            startActivity(Intent(this, RegisterActivity::class.java))
         }
     }
 
