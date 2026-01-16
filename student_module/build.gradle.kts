@@ -58,3 +58,6 @@ android {
         androidTestImplementation(libs.androidx.espresso.core)
     }
 }
+dependencies {
+    implementation(libs.androidx.cardview)
+}
