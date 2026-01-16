@@ -1,10 +1,13 @@
 package com.um.visamate.ui.faculty
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -13,26 +16,40 @@ import com.um.visamate.ui.login.LoginActivity
 
 class FacultyPortalActivity : AppCompatActivity() {
 
+    // --- UI Components ---
     private lateinit var tvPendingCount: TextView
     private lateinit var tvCompletedCount: TextView
     private lateinit var btnUploadDocs1: MaterialButton
     private lateinit var cardAhmed: MaterialCardView
-    private lateinit var fragmentContainer: View
     private lateinit var btnLogout: LinearLayout
+
+    // --- Activity Launcher ---
+    // This listens for when FacultyUploadActivity finishes and returns
+    private val uploadActivityLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            // The user successfully uploaded files and came back!
+            updateDashboardCounts()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_faculty_portal)
 
-        // 初始化
+        initializeViews()
+        setupDashboardLogic()
+    }
+
+    private fun initializeViews() {
         tvPendingCount = findViewById(R.id.tvPendingCount)
         tvCompletedCount = findViewById(R.id.tvCompletedCount)
         btnUploadDocs1 = findViewById(R.id.btnUploadDocs1)
         cardAhmed = findViewById(R.id.cardAhmed)
-        fragmentContainer = findViewById(R.id.fragment_container)
         btnLogout = findViewById(R.id.btnLogout)
+    }
 
-        // 登出逻辑
+    private fun setupDashboardLogic() {
+        // 1. Logout Logic
         btnLogout.setOnClickListener {
             val intent = Intent(this, LoginActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -40,33 +57,26 @@ class FacultyPortalActivity : AppCompatActivity() {
             finish()
         }
 
-        // 跳转逻辑
+        // 2. Open Upload Activity
         btnUploadDocs1.setOnClickListener {
-            fragmentContainer.visibility = View.VISIBLE // 显示容器
-            supportFragmentManager.beginTransaction()
-                .setCustomAnimations(android.R.anim.slide_in_left, android.R.anim.slide_out_right, android.R.anim.slide_in_left, android.R.anim.slide_out_right)
-                .replace(R.id.fragment_container, FacultyUploadFragment())
-                .addToBackStack(null)
-                .commit()
+            val intent = Intent(this, FacultyUploadActivity::class.java).apply {
+                // Pass the student details to the next screen
+                putExtra("studentId", "user-ahmed-khan")
+                putExtra("studentName", "Ahmed Ali")
+            }
+            // Launch the activity and wait for result
+            uploadActivityLauncher.launch(intent)
         }
     }
 
-    // 修复：处理返回键，确保返回时隐藏容器，露出底下的 UI
-    override fun onBackPressed() {
-        if (supportFragmentManager.backStackEntryCount > 0) {
-            supportFragmentManager.popBackStack()
-            fragmentContainer.visibility = View.GONE // 隐藏容器，防止遮挡
-        } else {
-            super.onBackPressed()
-        }
-    }
-
-    // 成功回调：卡片消失，数字变动
-    fun onUploadSuccess() {
+    private fun updateDashboardCounts() {
+        // Update the UI to show work is done
         tvPendingCount.text = "1"
         tvCompletedCount.text = "13"
+
+        // Hide the card for Ahmed since we just finished him
         cardAhmed.visibility = View.GONE
-        fragmentContainer.visibility = View.GONE // 隐藏容器
-        supportFragmentManager.popBackStack() // 退出上传页面
+
+        Toast.makeText(this, "Dashboard updated successfully", Toast.LENGTH_SHORT).show()
     }
 }

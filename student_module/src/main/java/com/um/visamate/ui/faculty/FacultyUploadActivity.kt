@@ -1,88 +1,167 @@
 package com.um.visamate.ui.faculty
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import com.um.visamate.R
-import com.um.visamate.data.models.SubmissionStatus
+import com.um.visamate.data.models.Submission
 import com.um.visamate.utils.FakeDatabase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class FacultyUploadFragment : Fragment() {
+class FacultyUploadActivity : AppCompatActivity() {
 
-    private lateinit var btnUploadConfirmation: MaterialButton
-    private lateinit var btnUploadResult: MaterialButton
-    private lateinit var tvConfirmationStatus: TextView
-    private lateinit var tvResultStatus: TextView
-    // 1. 添加变量声明
+    // --- UI Components ---
+    private lateinit var btnBack: ImageView
     private lateinit var tvStudentName: TextView
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.activity_faculty_upload, container, false)
-    }
+    // Upload Section 1
+    private lateinit var tvConfirmationStatus: TextView
+    private lateinit var btnUploadConfirmation: MaterialButton
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    // Upload Section 2
+    private lateinit var tvResultStatus: TextView
+    private lateinit var btnUploadResult: MaterialButton
 
-        // 2. 初始化 View
-        tvStudentName = view.findViewById(R.id.tvStudentName)
-        btnUploadConfirmation = view.findViewById(R.id.btnUploadConfirmation)
-        btnUploadResult = view.findViewById(R.id.btnUploadResult)
-        tvConfirmationStatus = view.findViewById(R.id.tvConfirmationStatus)
-        tvResultStatus = view.findViewById(R.id.tvResultStatus)
+    // --- Data Variables ---
+    private var studentId: String? = null
+    private var currentDocumentType: String? = null
+    private var submission: Submission? = null
 
-        // 3. 核心修复：在这里直接把名字写死，确保演示时一定显示 Ahmed Ali
-        tvStudentName.text = "Uploading for: Ahmed Ali"
-
-        // 修复返回键：点击后触发 Activity 的 onBackPressed 来隐藏容器
-        view.findViewById<View>(R.id.btnBack).setOnClickListener {
-            activity?.onBackPressed()
+    // --- File Picker Launcher ---
+    private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            // Document selected, save logic
+            currentDocumentType?.let { handleFileUpload(it) }
+        } else {
+            Toast.makeText(this, "No file selected", Toast.LENGTH_SHORT).show()
         }
-
-        btnUploadConfirmation.setOnClickListener { simulateUpload(tvConfirmationStatus, btnUploadConfirmation) }
-        btnUploadResult.setOnClickListener { simulateUpload(tvResultStatus, btnUploadResult) }
     }
 
-    private fun simulateUpload(statusView: TextView, button: MaterialButton) {
-        button.isEnabled = false
-        statusView.text = "Status: Uploading..."
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_faculty_upload)
 
-        statusView.postDelayed({
-            statusView.text = "Status: Completed ✅"
-            statusView.setTextColor(resources.getColor(android.R.color.holo_green_dark))
-            checkFinalStatus()
-        }, 1200)
+        bindViews()
+
+        studentId = intent.getStringExtra("studentId") ?: "user-ahmed-khan"
+        val studentName = intent.getStringExtra("studentName") ?: "Ahmed Ali"
+
+        tvStudentName.text = "Uploading for: $studentName"
+
+        loadSubmissionStatus()
+        setupClickListeners()
     }
 
-    private fun checkFinalStatus() {
-        if (tvConfirmationStatus.text.contains("Completed") && tvResultStatus.text.contains("Completed")) {
-            viewLifecycleOwner.lifecycleScope.launch {
-                try {
-                    // 更新数据库
-                    val submission = FakeDatabase.getSubmissionForUser("user-ahmed")
-                    if (submission != null) {
-                        submission.status = SubmissionStatus.APPROVED
-                        FakeDatabase.updateSubmission(submission)
+    private fun bindViews() {
+        btnBack = findViewById(R.id.btnBack)
+        tvStudentName = findViewById(R.id.tvStudentName)
+        tvConfirmationStatus = findViewById(R.id.tvConfirmationStatus)
+        btnUploadConfirmation = findViewById(R.id.btnUploadConfirmation)
+        tvResultStatus = findViewById(R.id.tvResultStatus)
+        btnUploadResult = findViewById(R.id.btnUploadResult)
+    }
 
-                        Toast.makeText(context, "Approval Successful!", Toast.LENGTH_SHORT).show()
+    private fun setupClickListeners() {
+        // Back Button
+        btnBack.setOnClickListener { finishWithResult() }
 
-                        // 回调 Activity，执行 UI 变更逻辑
-                        (activity as? FacultyPortalActivity)?.onUploadSuccess()
-                    } else {
-                        Toast.makeText(context, "Error: Student not found", Toast.LENGTH_SHORT).show()
-                        btnUploadConfirmation.isEnabled = true
-                        btnUploadResult.isEnabled = true
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+        // Upload Buttons
+        btnUploadConfirmation.setOnClickListener {
+            currentDocumentType = "ConfirmationLetter"
+            openFilePicker()
+        }
+        btnUploadResult.setOnClickListener {
+            currentDocumentType = "ResultTranscript"
+            openFilePicker()
+        }
+    }
+
+    private fun loadSubmissionStatus() {
+        CoroutineScope(Dispatchers.Main).launch {
+            submission = withContext(Dispatchers.IO) {
+                studentId?.let { FakeDatabase.getSubmissionForUser(it) }
             }
+
+            // Create submission if it doesn't exist
+            if (submission == null) {
+                val newSub = Submission(userId = studentId ?: "")
+                withContext(Dispatchers.IO) { FakeDatabase.createSubmission(newSub) }
+                submission = newSub
+            }
+            updateUI()
         }
+    }
+
+    private fun openFilePicker() {
+        try {
+            filePickerLauncher.launch("*/*")
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, "File manager not found", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun handleFileUpload(docType: String) {
+        val currentSub = submission ?: return
+        val updatedSubmission = when (docType) {
+            "ConfirmationLetter" -> currentSub.copy(hasConfirmationLetter = true)
+            "ResultTranscript" -> currentSub.copy(hasResultTranscript = true)
+            else -> currentSub
+        }
+
+        CoroutineScope(Dispatchers.Main).launch {
+            withContext(Dispatchers.IO) {
+                FakeDatabase.updateSubmission(updatedSubmission)
+            }
+            submission = updatedSubmission
+            Toast.makeText(this@FacultyUploadActivity, "Uploaded Successfully!", Toast.LENGTH_SHORT).show()
+            updateUI()
+        }
+    }
+
+    private fun updateUI() {
+        val sub = submission ?: return
+
+        // Update Confirmation Status
+        if (sub.hasConfirmationLetter) {
+            tvConfirmationStatus.text = "Status: Completed ✅"
+            tvConfirmationStatus.setTextColor(Color.parseColor("#4CAF50"))
+            btnUploadConfirmation.text = "Replace File"
+        } else {
+            tvConfirmationStatus.text = "Status: Pending"
+            tvConfirmationStatus.setTextColor(Color.GRAY)
+            btnUploadConfirmation.text = "Upload"
+        }
+
+        // Update Result Status
+        if (sub.hasResultTranscript) {
+            tvResultStatus.text = "Status: Completed ✅"
+            tvResultStatus.setTextColor(Color.parseColor("#4CAF50"))
+            btnUploadResult.text = "Replace File"
+        } else {
+            tvResultStatus.text = "Status: Pending"
+            tvResultStatus.setTextColor(Color.GRAY)
+            btnUploadResult.text = "Upload"
+        }
+    }
+
+    private fun finishWithResult() {
+        // Notify Portal that we are done
+        setResult(Activity.RESULT_OK)
+        finish()
+    }
+
+    override fun onBackPressed() {
+        finishWithResult()
     }
 }

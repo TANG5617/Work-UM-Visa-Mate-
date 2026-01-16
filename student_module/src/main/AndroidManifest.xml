@@ -32,8 +32,9 @@
             android:name="com.um.visamate.ui.payment.PaymentActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
+        
+        <activity android:name="com.um.visamate.ui.faculty.FacultyUploadActivity" />
 
     </application>
-
 
 </manifest>
