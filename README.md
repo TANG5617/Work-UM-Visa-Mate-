@@ -26,4 +26,4 @@ This is a multi-module Android project with the following modules:
 -   **"Unresolved reference" errors in Kotlin files**: If you see red errors related to `R` imports or other classes, use Android Studio's quick fix (Alt + Enter on Windows/Linux, Option + Return on Mac) to import the correct classes.
 -   **Gradle Sync Issues**: Ensure your Android Studio is up-to-date and that you have the necessary SDK components installed (Platform 34, Build-Tools 34.0.0 or 35.0.0).
 
-Feel free to contribute or report any issues!
+Feel free to contribute or report any issues！
